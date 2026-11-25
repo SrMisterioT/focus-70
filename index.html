@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#080d17">
+<meta name="description" content="Temporizador de concentración de 70 minutos.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<title>FOCUS 70</title>
+<style>
+:root{color-scheme:dark;--blue:#91baff;--muted:#91a0b7}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#080d17;font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#fff}
+body{min-height:100dvh;background:radial-gradient(ellipse at 50% 35%,#202b46 0%,#101827 48%,#080d17 100%);overflow:hidden}
+main{min-height:100dvh;min-height:100svh;padding:max(24px,env(safe-area-inset-top)) 20px max(24px,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center}
+header{width:min(100%,520px);display:flex;align-items:center;justify-content:space-between;text-align:left}
+.eyebrow{font-size:12px;letter-spacing:.28em;font-weight:700;color:#c5dcff}.sub{font-size:13px;color:var(--muted);margin-top:5px}
+.pill{font-size:10px;letter-spacing:.08em;border:1px solid #ffffff25;border-radius:30px;padding:9px 11px;color:#d5e5ff}
+.center{display:flex;flex-direction:column;align-items:center;gap:22px;margin:auto 0}
+.ring{width:min(76vw,340px);aspect-ratio:1;position:relative;display:grid;place-items:center}
+svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.track,.progress{fill:none;stroke-width:2.5}.track{stroke:#ffffff15}.progress{stroke:var(--blue);stroke-linecap:round;stroke-dasharray:282.743;stroke-dashoffset:0;transition:stroke-dashoffset .25s}
+.clock{font-size:clamp(68px,17vw,112px);font-weight:250;letter-spacing:-.065em;font-variant-numeric:tabular-nums;line-height:1}
+.status{font-size:12px;letter-spacing:.2em;color:#b8d3ff;margin-top:16px}
+.label{font-size:11px;letter-spacing:.22em;color:var(--muted)}.duration{font-size:21px;margin-top:6px;font-weight:500}
+.controls{width:min(100%,440px);display:grid;grid-template-columns:1fr auto;gap:12px}
+button{font:inherit;font-weight:650;border:0;border-radius:999px;padding:17px 22px;cursor:pointer}
+button:active{transform:scale(.98)}.primary{background:#dbeafe;color:#101827;min-width:0}.secondary{background:#ffffff12;border:1px solid #ffffff28;color:#fff}
+.full{grid-column:1/-1;justify-self:center;padding:12px 18px;font-size:13px}.note{font-size:11px;color:#74839a;margin-top:14px}
+#done{display:none;color:#b8d3ff;font-size:13px;letter-spacing:.12em}
+@media (orientation:landscape) and (max-height:520px){main{padding:12px 24px}.center{flex-direction:row;gap:40px}.ring{width:min(55vh,280px)}.clock{font-size:clamp(54px,10vw,82px)}}
+</style>
+</head>
+<body>
+<main>
+<header><div><div class="eyebrow">FOCUS 70</div><div class="sub">Tu espacio de concentración</div></div><div class="pill">70 MIN · SIN DESCANSOS</div></header>
+<section class="center" aria-live="polite">
+<div class="ring"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="track" cx="50" cy="50" r="45"/><circle id="arc" class="progress" cx="50" cy="50" r="45"/></svg>
+<div><div id="clock" class="clock">70:00</div><div id="status" class="status">LISTO PARA COMENZAR</div></div></div>
+<div><div class="label">TIEMPO DE ESTUDIO</div><div class="duration">01 h 10 min</div></div><div id="done">¡SESIÓN COMPLETADA! 🎉</div>
+</section>
+<section class="controls"><button id="start" class="primary">▶ Iniciar</button><button id="reset" class="secondary">↺ Reiniciar</button><button id="fullscreen" class="secondary full">⛶ Pantalla completa</button><div class="note" style="grid-column:1/-1">FOCUS 70 · CONCENTRACIÓN · DISCIPLINA · PROGRESO</div></section>
+</main>
+<script>
+(()=>{const total=4200,clock=document.querySelector('#clock'),status=document.querySelector('#status'),arc=document.querySelector('#arc'),start=document.querySelector('#start'),reset=document.querySelector('#reset'),full=document.querySelector('#fullscreen'),done=document.querySelector('#done');let remaining=total,running=false,deadline=0,timer=null,finished=false,wakeLock=null;const circumference=2*Math.PI*45;
+function draw(){clock.textContent=String(Math.floor(remaining/60)).padStart(2,'0')+':'+String(remaining%60).padStart(2,'0');arc.style.strokeDashoffset=String(circumference*(1-remaining/total));if(!finished)status.textContent=running?'CONCENTRACIÓN EN CURSO':remaining===total?'LISTO PARA COMENZAR':'SESIÓN EN PAUSA'}
+async function keepAwake(){try{if('wakeLock'in navigator)wakeLock=await navigator.wakeLock.request('screen')}catch(e){}}
+function alarm(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;const ctx=new C();[0,.35,.7].forEach(d=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.value=660;o.type='sine';g.gain.setValueAtTime(.001,ctx.currentTime+d);g.gain.exponentialRampToValueAtTime(.18,ctx.currentTime+d+.03);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+d+.32);o.start(ctx.currentTime+d);o.stop(ctx.currentTime+d+.34)})}catch(e){}}
+function finish(){running=false;finished=true;clearInterval(timer);remaining=0;draw();status.textContent='SESIÓN FINALIZADA';done.style.display='block';start.textContent='✓ Completado';start.disabled=true;start.style.opacity='.6';if(wakeLock){wakeLock.release();wakeLock=null}alarm()}
+function tick(){remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));if(remaining<=0){finish();return}draw()}
+start.addEventListener('click',async()=>{if(finished)return;if(running){remaining=Math.max(0,Math.ceil((deadline-Date.now())/1000));running=false;clearInterval(timer);start.textContent='▶ Continuar';draw();if(wakeLock){wakeLock.release();wakeLock=null}}else{running=true;deadline=Date.now()+remaining*1000;start.textContent='Ⅱ Pausar';await keepAwake();tick();timer=setInterval(tick,200)}});
+reset.addEventListener('click',()=>{clearInterval(timer);running=false;finished=false;remaining=total;done.style.display='none';start.disabled=false;start.style.opacity='1';start.textContent='▶ Iniciar';if(wakeLock){wakeLock.release();wakeLock=null}draw()});
+full.addEventListener('click',async()=>{try{if(!document.fullscreenElement){await document.documentElement.requestFullscreen();full.textContent='Salir de pantalla completa'}else await document.exitFullscreen()}catch(e){status.textContent='PANTALLA COMPLETA NO DISPONIBLE'}});
+document.addEventListener('fullscreenchange',()=>{full.textContent=document.fullscreenElement?'Salir de pantalla completa':'⛶ Pantalla completa'});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&running)keepAwake()});
+if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));draw()})();
+</script>
+</body></html>
